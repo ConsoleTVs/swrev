@@ -196,7 +196,7 @@ export class SWR {
   /**
    * Helper to subscribe to visibility changes.
    */
-  subscribeVisibility(handler: () => any, { throttleInterval = 5000, enabled = true } = {}) {
+  protected subscribeVisibility(handler: () => any, { throttleInterval = 5000, enabled = true } = {}) {
     if (enabled && typeof window !== 'undefined') {
       let lastFocus: number | null = null
       const rawHandler = () => {
@@ -215,7 +215,7 @@ export class SWR {
   /**
    * Helper to subscribe to network changes.
    */
-  subscribeNetwork(handler: () => any, { enabled = true } = {}) {
+  protected subscribeNetwork(handler: () => any, { enabled = true } = {}) {
     if (enabled && typeof window !== 'undefined') {
       window.addEventListener('online', handler)
       return () => window.removeEventListener('online', handler)
@@ -238,6 +238,25 @@ export class SWR {
       if (!item.isResolving()) return item.data as D
     }
     return undefined
+  }
+
+  /**
+   * Gets an element from the cache. The difference
+   * with the get is that this method returns a promise
+   * that will resolve the the value. If there's no item
+   * in the cache, it will wait for it before resolving.
+   */
+  getOrWait<D = any>(key: SWRKey): Promise<D> {
+    return new Promise((resolve) => {
+      // Resolve if we already got the data.
+      const current = this.get(key)
+      if (current) return resolve(current)
+      // Subscribe to the cache and wait.
+      const unsubcsribe = this.subscribe(key, (data: D) => {
+        unsubcsribe()
+        return resolve(data)
+      })
+    })
   }
 
   /**
