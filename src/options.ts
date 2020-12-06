@@ -76,7 +76,12 @@ export interface SWROptions<D = any> {
 /**
  * Default fetcher function. Keep in mind it requires fetch() API.
  */
-const fetcher = <D>(url: SWRKey): Promise<D> => fetch(url).then((res) => res.json())
+const fetcher = <D>(url: SWRKey): Promise<D> => {
+  return fetch(url).then((res) => {
+    if (!res.ok) throw Error('Not a 2XX response.')
+    return res.json()
+  })
+}
 
 /**
  * Stores the default SWR options.
