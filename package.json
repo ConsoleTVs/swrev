@@ -1,5 +1,5 @@
 {
-  "version": "1.4.1",
+  "version": "1.5.0",
   "license": "MIT",
   "name": "swrev",
   "description": "Framework agnostic stale while revalidate (SWR) data fetching strategy",
@@ -14,7 +14,7 @@
   "scripts": {
     "dev": "tsup src/index.ts --watch --format esm,cjs,iife --legacy-output",
     "build": "tsup src/index.ts --dts --format esm,cjs,iife --legacy-output --minify",
-    "prepack": "yarn build"
+    "prepack": "npm run build"
   },
   "peerDependencies": {},
   "devDependencies": {

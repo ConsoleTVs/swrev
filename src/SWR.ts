@@ -34,7 +34,7 @@ export class SWR {
    * Creates a new instance of SWR.
    */
   constructor(options?: Partial<SWROptions>) {
-    this.options = { ...options, ...defaultOptions }
+    this.options = { ...defaultOptions, ...options }
   }
 
   /**
@@ -94,7 +94,12 @@ export class SWR {
     if (!key) return
 
     // Resolves the options given the defaults.
-    const { force, fetcher, dedupingInterval }: SWRRevalidateOptions<D> = { ...defaultRevalidateOptions, ...options }
+    const { fetcher: defaultFetcher, dedupingInterval: defaultDedupingInterval } = this.options
+    const { force, fetcher, dedupingInterval }: SWRRevalidateOptions<D> = {
+      ...defaultRevalidateOptions,
+      ...{ fetcher: defaultFetcher, dedupingInterval: defaultDedupingInterval },
+      ...options,
+    }
 
     // Stores the data to mutate (if any).
     let data: undefined | Promise<D | undefined> = undefined
@@ -113,7 +118,9 @@ export class SWR {
       // CIRCULAR DEPENDENCY; PLEASE TAKE CARE IF YOU ARE WILLING TO MODIFY
       // THE FOLLOWING LINE. THE MUTATE METHOD MUST NEVER BE CALLED WITH
       // THE REVALIDATE = TRUE PARAMETER.
-      this.mutate(key, new CacheItem({ data }).expiresIn(dedupingInterval), { revalidate: false })
+      this.mutate(key, new CacheItem({ data }).expiresIn(dedupingInterval), {
+        revalidate: false,
+      })
     }
   }
 
