@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "license": "MIT",
   "name": "swrev",
   "description": "Framework agnostic stale while revalidate (SWR) data fetching strategy",
@@ -15,7 +15,7 @@
     "dev": "tsup src/index.ts --watch --format esm,cjs,iife --legacy-output",
     "build": "tsup src/index.ts --dts --format esm,cjs,iife --legacy-output --minify",
     "docs": "typedoc --out docs/ --exclude **/node_modules/** --theme minimal --excludeProtected --excludePrivate ./src",
-    "prepack": "npm run build"
+    "prepack": "npm run build && npm run docs"
   },
   "peerDependencies": {},
   "devDependencies": {
