@@ -1,5 +1,5 @@
 {
-  "version": "1.7.0",
+  "version": "1.8.0",
   "license": "MIT",
   "name": "swrev",
   "description": "Framework agnostic stale while revalidate (SWR) data fetching strategy",

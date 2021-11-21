@@ -55,7 +55,7 @@ export class SWR {
    * Requests the data using the provided fetcher.
    */
   protected requestData<D>(key: SWRKey, fetcher: SWRFetcher<D>): Promise<D | undefined> {
-    return fetcher(key).catch((detail) => {
+    return Promise.resolve(fetcher(key)).catch((detail) => {
       this.errors.dispatchEvent(new CustomEvent(key, { detail }))
       return undefined
     })
