@@ -15,6 +15,9 @@ export const defaultCacheClearOptions: CacheClearOptions = {
   broadcast: false,
 }
 
+export type CacheEventData<D> = { data: D }
+export type CacheEvent<D> = CustomEvent<CacheEventData<D>>
+
 /**
  * Determines how a cache item data looks like.
  */
@@ -127,12 +130,12 @@ export interface SWRCache {
   /**
    * Subscribes to the given key for changes.
    */
-  subscribe<D>(key: SWRKey, callback: (event: CustomEvent<D>) => void): void
+  subscribe<D>(key: SWRKey, callback: (event: CacheEvent<D>) => void): void
 
   /**
    * Unsubscribes to the given key events.
    */
-  unsubscribe<D>(key: SWRKey, callback: (event: CustomEvent<D>) => void): void
+  unsubscribe<D>(key: SWRKey, callback: (event: CacheEvent<D>) => void): void
 
   /**
    * Broadcasts a value change to all subscribed instances.
@@ -221,21 +224,21 @@ export class DefaultCache implements SWRCache {
   /**
    * Subscribes the callback to the given key.
    */
-  subscribe<D>(key: SWRKey, callback: (event: CustomEvent<D>) => void): void {
+  subscribe<D>(key: SWRKey, callback: (event: CacheEvent<D>) => void): void {
     this.event.addEventListener(key, callback as EventListener)
   }
 
   /**
    * Unsubscribes to the given key events.
    */
-  unsubscribe<D>(key: SWRKey, callback: (event: CustomEvent<D>) => void): void {
+  unsubscribe<D>(key: SWRKey, callback: (event: CacheEvent<D>) => void): void {
     this.event.removeEventListener(key, callback as EventListener)
   }
 
   /**
    * Broadcasts a value change  on all subscribed instances.
    */
-  broadcast<D>(key: SWRKey, detail: D) {
-    this.event.dispatchEvent(new CustomEvent(key, { detail }))
+  broadcast<D>(key: SWRKey, data: D) {
+    this.event.dispatchEvent(new CustomEvent<CacheEventData<D>>(key, { detail: { data } }))
   }
 }

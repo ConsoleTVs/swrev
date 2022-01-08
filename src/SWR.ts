@@ -1,4 +1,4 @@
-import { SWRCache, CacheItem, CacheClearOptions } from './cache'
+import { SWRCache, CacheItem, CacheClearOptions, CacheEvent } from './cache'
 import { SWRKey } from './key'
 import {
   SWROptions,
@@ -10,6 +10,9 @@ import {
   defaultMutateOptions,
   defaultClearOptions,
 } from './options'
+
+export type ErrorEventData<D> = { data: D }
+export type ErrorEvent<D> = CustomEvent<ErrorEventData<D>>
 
 /**
  * Determines how a function state value looks like.
@@ -55,8 +58,8 @@ export class SWR {
    * Requests the data using the provided fetcher.
    */
   protected requestData<D>(key: SWRKey, fetcher: SWRFetcher<D>): Promise<D | undefined> {
-    return fetcher(key).catch((detail) => {
-      this.errors.dispatchEvent(new CustomEvent(key, { detail }))
+    return fetcher(key).catch((data) => {
+      this.errors.dispatchEvent(new CustomEvent<ErrorEventData<D>>(key, { detail: { data } }))
       return undefined
     })
   }
@@ -174,7 +177,7 @@ export class SWR {
    */
   subscribe<D>(key: SWRKey | undefined, onData: (value: D) => any) {
     if (key) {
-      const handler = ({ detail }: CustomEvent<D>) => onData(detail)
+      const handler = ({ detail }: CacheEvent<D>) => onData(detail.data)
       this.cache.subscribe(key, handler)
       return () => this.cache.unsubscribe(key, handler)
     }
@@ -186,7 +189,7 @@ export class SWR {
    */
   subscribeErrors<E>(key: SWRKey | undefined, onError: (error: E) => any) {
     if (key) {
-      const handler = ({ detail }: CustomEvent<E>) => onError(detail)
+      const handler = ({ detail }: ErrorEvent<E>) => onError(detail.data)
       this.errors.addEventListener(key, handler as EventListener)
       return () => this.errors.removeEventListener(key, handler as EventListener)
     }
