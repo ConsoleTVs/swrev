@@ -5,7 +5,7 @@ import { SWRKey } from './key'
 /**
  * Determines the type of the fetcher.
  */
-export type SWRFetcher<D = any> = (...props: any[]) => Promise<D>
+export type SWRFetcher<D = any> = (...props: any[]) => Promise<D> | D
 
 /**
  * Determines the options available for the SWR configuration.
