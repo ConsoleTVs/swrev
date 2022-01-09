@@ -1,5 +1,5 @@
 {
-  "version": "1.10.4",
+  "version": "1.10.5",
   "license": "MIT",
   "name": "swrev",
   "description": "Framework agnostic stale while revalidate (SWR) data fetching strategy",
@@ -7,7 +7,6 @@
   "types": "./dist/swrev.d.ts",
   "main": "./dist/swrev.umd.js",
   "module": "./dist/swrev.es.js",
-  "svelte": "./src/swrev.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
