@@ -4,9 +4,9 @@ import {
   SWROptions,
   defaultOptions,
   SWRRevalidateOptions,
-  defaultRevalidateOptions,
   SWRFetcher,
   SWRMutateOptions,
+  defaultRevalidateOptions,
   defaultMutateOptions,
   defaultClearOptions,
 } from './options'
@@ -92,7 +92,7 @@ export class SWR {
   /**
    * Revalidates the key and mutates the cache if needed.
    */
-  revalidate<D>(key?: SWRKey, options?: Partial<SWRRevalidateOptions<D>>): void {
+  revalidate<D = any>(key?: SWRKey, options?: Partial<SWRRevalidateOptions<D>>): void {
     // Avoid doing anything if the key resolved to undefined.
     if (!key) return
 
@@ -132,7 +132,7 @@ export class SWR {
    * This is used to replace the cache contents of the
    * given key manually.
    */
-  mutate<D>(key?: SWRKey, value?: SWRMutateValue<D>, options?: Partial<SWRMutateOptions>): void {
+  mutate<D = any>(key?: SWRKey, value?: SWRMutateValue<D>, options?: Partial<SWRMutateOptions>): void {
     // Avoid doing anything if the key resolved to undefined.
     if (!key) return
 
@@ -175,55 +175,25 @@ export class SWR {
    * this data will be stale and revalidate in the background
    * unless specified otherwise.
    */
-  subscribe<D>(key: SWRKey | undefined, onData: (value: D) => any) {
+  public subscribeData<D = any>(key: SWRKey | undefined, onData: (value: D) => any) {
     if (key) {
       const handler = ({ detail }: CacheEvent<D>) => onData(detail.data)
       this.cache.subscribe(key, handler)
       return () => this.cache.unsubscribe(key, handler)
     }
-    return () => undefined
+    return () => {}
   }
 
   /**
    * Subscribes to errors on the given key.
    */
-  subscribeErrors<E>(key: SWRKey | undefined, onError: (error: E) => any) {
+  public subscribeErrors<E = Error>(key: SWRKey | undefined, onError: (error: E) => any) {
     if (key) {
       const handler = ({ detail }: ErrorEvent<E>) => onError(detail.data)
       this.errors.addEventListener(key, handler as EventListener)
       return () => this.errors.removeEventListener(key, handler as EventListener)
     }
-    return () => undefined
-  }
-
-  /**
-   * Helper to subscribe to visibility changes.
-   */
-  protected subscribeVisibility(handler: () => any, { throttleInterval = 5000, enabled = true } = {}) {
-    if (enabled && typeof window !== 'undefined') {
-      let lastFocus: number | null = null
-      const rawHandler = () => {
-        const now = Date.now()
-        if (lastFocus === null || now - lastFocus > throttleInterval) {
-          lastFocus = now
-          handler()
-        }
-      }
-      window.addEventListener('focus', rawHandler)
-      return () => window.removeEventListener('focus', rawHandler)
-    }
-    return () => undefined
-  }
-
-  /**
-   * Helper to subscribe to network changes.
-   */
-  protected subscribeNetwork(handler: () => any, { enabled = true } = {}) {
-    if (enabled && typeof window !== 'undefined') {
-      window.addEventListener('online', handler)
-      return () => window.removeEventListener('online', handler)
-    }
-    return () => undefined
+    return () => {}
   }
 
   /**
@@ -235,7 +205,7 @@ export class SWR {
    * - If the item is pending to resolve (there is a request
    * pending to resolve) it will return undefined.
    */
-  get<D = any>(key?: SWRKey): D | undefined {
+  public get<D = any>(key?: SWRKey): D | undefined {
     if (key && this.cache.has(key)) {
       const item = this.cache.get<D>(key)
       if (!item.isResolving()) return item.data as D
@@ -249,16 +219,21 @@ export class SWR {
    * that will resolve the the value. If there's no item
    * in the cache, it will wait for it before resolving.
    */
-  getOrWait<D = any>(key: SWRKey): Promise<D> {
-    return new Promise((resolve) => {
+  public getWait<D = any>(key: SWRKey): Promise<D> {
+    return new Promise((resolve, reject) => {
+      // Subscribe to the cache and wait.
+      const unsubscribe = this.subscribeData(key, (data: D) => {
+        unsubscribe()
+        return resolve(data)
+      })
+      // Subscribe to errors.
+      const unsubscribeErrors = this.subscribeErrors(key, (error: any) => {
+        unsubscribeErrors()
+        return reject(error)
+      })
       // Resolve if we already got the data.
       const current = this.get(key)
       if (current) return resolve(current)
-      // Subscribe to the cache and wait.
-      const unsubcsribe = this.subscribe(key, (data: D) => {
-        unsubcsribe()
-        return resolve(data)
-      })
     })
   }
 
@@ -266,7 +241,7 @@ export class SWR {
    * Use a SWR value given the key and
    * subscribe to future changes.
    */
-  use<D = any, E = Error>(
+  public subscribe<D = any, E = Error>(
     key: SWRKey | undefined | (() => SWRKey | undefined),
     onData: (value: D) => void,
     onError: (error: E) => void,
@@ -282,6 +257,8 @@ export class SWR {
       revalidateOnFocus,
       focusThrottleInterval,
       revalidateOnReconnect,
+      reconnectWhen,
+      focusWhen,
     }: SWROptions<D> = {
       // Current instance options
       // (includes default options)
@@ -309,19 +286,19 @@ export class SWR {
     if (revalidateOnStart) revalidateCurrentWithOptions()
 
     // Subscribe for changes in data
-    const unsubscribeData = this.subscribe<D>(this.resolveKey(key), onData)
+    const unsubscribeData = this.subscribeData<D>(this.resolveKey(key), onData)
 
     // Subscribe for changes in errors.
     const unsubscribeErrors = this.subscribeErrors<E>(this.resolveKey(key), onError)
 
     // Subscribe for visibility changes.
-    const unsubscribeVisibility = this.subscribeVisibility(revalidateCurrentWithOptions, {
+    const unsubscribeVisibility = focusWhen(revalidateCurrentWithOptions, {
       throttleInterval: focusThrottleInterval,
       enabled: revalidateOnFocus,
     })
 
     // Subscribe for network changes.
-    const unsubscribeNetwork = this.subscribeNetwork(revalidateCurrentWithOptions, {
+    const unsubscribeNetwork = reconnectWhen(revalidateCurrentWithOptions, {
       enabled: revalidateOnReconnect,
     })
 
@@ -329,8 +306,8 @@ export class SWR {
     const unsubscribe = () => {
       unsubscribeData()
       unsubscribeErrors()
-      unsubscribeVisibility()
-      unsubscribeNetwork()
+      unsubscribeVisibility?.()
+      unsubscribeNetwork?.()
     }
 
     // Populate the initial data from the cache.

@@ -3,6 +3,21 @@ import { EventTarget } from './eventTarget'
 import { SWRKey } from './key'
 
 /**
+ * Determines the network options.
+ */
+export interface NetworkOptions {
+  enabled: boolean
+}
+
+/**
+ * Determines the network options.
+ */
+export interface VisibilityOptions {
+  enabled: boolean
+  throttleInterval: number
+}
+
+/**
  * Determines the type of the fetcher.
  */
 export type SWRFetcher<D = any> = (...props: any[]) => Promise<D> | D
@@ -71,16 +86,22 @@ export interface SWROptions<D = any> {
    * is detected (basically the browser / app comes back online).
    */
   revalidateOnReconnect: boolean
-}
 
-/**
- * Default fetcher function. Keep in mind it requires fetch() API.
- */
-const fetcher = <D>(url: SWRKey): Promise<D> => {
-  return fetch(url).then((res) => {
-    if (!res.ok) throw Error('Not a 2XX response.')
-    return res.json()
-  })
+  /**
+   * You can use this function to manually call
+   * the notify callback when the application has
+   * reconnected. You can also return a function
+   * that will be called as a cleanup.
+   */
+  reconnectWhen: (notify: () => void, options: NetworkOptions) => void | (() => void)
+
+  /**
+   * You can use this function to manually call
+   * the notify callback when the application has
+   * gained focus. You can also return a function
+   * that will be called as a cleanup.
+   */
+  focusWhen: (notify: () => void, options: VisibilityOptions) => void | (() => void)
 }
 
 /**
@@ -89,7 +110,11 @@ const fetcher = <D>(url: SWRKey): Promise<D> => {
 export const defaultOptions: SWROptions = {
   cache: new DefaultCache(),
   errors: new EventTarget(),
-  fetcher,
+  fetcher: async <D>(url: SWRKey): Promise<D> => {
+    const response = await fetch(url)
+    if (!response.ok) throw Error('Not a 2XX response.')
+    return response.json()
+  },
   initialData: undefined,
   loadInitialCache: true,
   revalidateOnStart: true,
@@ -97,6 +122,28 @@ export const defaultOptions: SWROptions = {
   revalidateOnFocus: true,
   focusThrottleInterval: 5000,
   revalidateOnReconnect: true,
+  reconnectWhen: (notify: () => void, { enabled }) => {
+    if (enabled && typeof window !== 'undefined') {
+      window.addEventListener('online', notify)
+      return () => window.removeEventListener('online', notify)
+    }
+    return () => {}
+  },
+  focusWhen: (notify: () => void, { enabled, throttleInterval }) => {
+    if (enabled && typeof window !== 'undefined') {
+      let lastFocus: number | null = null
+      const rawHandler = () => {
+        const now = Date.now()
+        if (lastFocus === null || now - lastFocus > throttleInterval) {
+          lastFocus = now
+          notify()
+        }
+      }
+      window.addEventListener('focus', rawHandler)
+      return () => window.removeEventListener('focus', rawHandler)
+    }
+    return () => {}
+  },
 }
 
 /**
