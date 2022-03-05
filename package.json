@@ -1,12 +1,12 @@
 {
-  "version": "2.0.0",
+  "version": "3.0.0",
   "license": "MIT",
   "name": "swrev",
   "description": "Framework agnostic stale while revalidate (SWR) data fetching strategy",
   "author": {
-    "name" : "Erik C. Forés",
-    "email" : "soc@erik.cat",
-    "url" : "https://erik.cat"
+    "name": "Erik C. Forés",
+    "email": "soc@erik.cat",
+    "url": "https://erik.cat"
   },
   "types": "./dist/swrev.d.ts",
   "main": "./dist/swrev.umd.js",
@@ -27,11 +27,8 @@
     "build": "vite build && tsc --skipLibCheck",
     "prepack": "npm run build"
   },
-  "dependencies": {
-    "@ungap/event-target": "^0.2.3"
-  },
   "devDependencies": {
     "typescript": "^4.6.2",
-    "vite": "^2.8.5"
+    "vite": "^2.8.6"
   }
 }

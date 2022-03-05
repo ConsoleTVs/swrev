@@ -1,4 +1,5 @@
-import { SWRCache, CacheItem, CacheClearOptions, CacheEvent } from './cache'
+import { SWRCache, CacheItem, CacheClearOptions } from './cache'
+import { SWREventManager } from './events'
 import { SWRKey } from './key'
 import {
   SWROptions,
@@ -10,9 +11,6 @@ import {
   defaultMutateOptions,
   defaultClearOptions,
 } from './options'
-
-export type ErrorEventData<D> = { data: D }
-export type ErrorEvent<D> = CustomEvent<ErrorEventData<D>>
 
 /**
  * Determines how a function state value looks like.
@@ -50,7 +48,7 @@ export class SWR {
   /**
    * Gets the cache of the SWR.
    */
-  protected get errors(): EventTarget {
+  protected get errors(): SWREventManager {
     return this.options.errors
   }
 
@@ -59,7 +57,7 @@ export class SWR {
    */
   protected requestData<D>(key: SWRKey, fetcher: SWRFetcher<D>): Promise<D | undefined> {
     return Promise.resolve(fetcher(key)).catch((data) => {
-      this.errors.dispatchEvent(new CustomEvent<ErrorEventData<D>>(key, { detail: { data } }))
+      this.errors.emit(key, data)
       return undefined
     })
   }
@@ -177,7 +175,7 @@ export class SWR {
    */
   public subscribeData<D = any>(key: SWRKey | undefined, onData: (value: D) => any) {
     if (key) {
-      const handler = ({ detail }: CacheEvent<D>) => onData(detail.data)
+      const handler = (payload: D) => onData(payload)
       this.cache.subscribe(key, handler)
       return () => this.cache.unsubscribe(key, handler)
     }
@@ -189,9 +187,9 @@ export class SWR {
    */
   public subscribeErrors<E = Error>(key: SWRKey | undefined, onError: (error: E) => any) {
     if (key) {
-      const handler = ({ detail }: ErrorEvent<E>) => onError(detail.data)
-      this.errors.addEventListener(key, handler as EventListener)
-      return () => this.errors.removeEventListener(key, handler as EventListener)
+      const handler = (payload: E) => onError(payload)
+      this.errors.subscribe(key, handler)
+      return () => this.errors.unsubscribe(key, handler)
     }
     return () => {}
   }
