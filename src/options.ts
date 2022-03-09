@@ -23,6 +23,14 @@ export interface VisibilityOptions {
 export type SWRFetcher<D = any> = (...props: any[]) => Promise<D> | D
 
 /**
+ * Determines the revalidation function to use.
+ */
+export type SWRRevalidateFunction<D = any> = (
+  key?: string | undefined,
+  options?: Partial<SWRRevalidateOptions<D>> | undefined
+) => Promise<D | undefined>
+
+/**
  * Determines the options available for the SWR configuration.
  */
 export interface SWROptions<D = any> {
@@ -103,6 +111,12 @@ export interface SWROptions<D = any> {
    * that will be called as a cleanup.
    */
   focusWhen: (notify: () => void, options: VisibilityOptions) => void | (() => void)
+
+  /**
+   * The revalidation function to use. If not specified,
+   * it will use the default revalidation with the `revalidateOptions`.
+   */
+  revalidateFunction: SWRRevalidateFunction<D> | undefined
 }
 
 /**
@@ -145,6 +159,7 @@ export const defaultOptions: SWROptions = {
     }
     return () => {}
   },
+  revalidateFunction: undefined,
 }
 
 /**
@@ -181,6 +196,12 @@ export interface SWRMutateOptions<D = any> {
    * the parameter `revalidate` is set to true.
    */
   revalidateOptions: Partial<SWRRevalidateOptions<D>>
+
+  /**
+   * The revalidation function to use. If not specified,
+   * it will use the default revalidation with the `revalidateOptions`.
+   */
+  revalidateFunction: SWRRevalidateFunction<D> | undefined
 }
 
 /**
@@ -189,6 +210,7 @@ export interface SWRMutateOptions<D = any> {
 export const defaultMutateOptions: SWRMutateOptions = {
   revalidate: true,
   revalidateOptions: { ...defaultRevalidateOptions },
+  revalidateFunction: undefined,
 }
 
 /**
