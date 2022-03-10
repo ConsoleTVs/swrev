@@ -28,7 +28,7 @@ export type SWRFetcher<D = any> = (...props: any[]) => Promise<D> | D
 export type SWRRevalidateFunction<D = any> = (
   key?: string | undefined,
   options?: Partial<SWRRevalidateOptions<D>> | undefined
-) => Promise<D | undefined>
+) => Promise<D>
 
 /**
  * Determines the options available for the SWR configuration.

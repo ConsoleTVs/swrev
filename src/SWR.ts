@@ -15,12 +15,12 @@ import {
 /**
  * Determines how a function state value looks like.
  */
-export type SWRFunctionStateValue<D> = (state: D | null) => D
+export type SWRFunctionStateValue<D> = (state: D | undefined) => D
 
 /**
  * Determines how a SWR mutate value looks like.
  */
-export type SWRMutateValue<D> = null | D | SWRFunctionStateValue<D>
+export type SWRMutateValue<D> = D | SWRFunctionStateValue<D>
 
 /**
  * Stale While Revalidate
@@ -55,10 +55,10 @@ export class SWR {
   /**
    * Requests the data using the provided fetcher.
    */
-  protected async requestData<D>(key: SWRKey, fetcher: SWRFetcher<D>): Promise<D | undefined> {
-    return await Promise.resolve(fetcher(key)).catch((data) => {
-      this.errors.emit(key, data)
-      return undefined
+  protected async requestData<D, E extends Error = Error>(key: SWRKey, fetcher: SWRFetcher<D>): Promise<D> {
+    return await Promise.resolve(fetcher(key)).catch((reason: E) => {
+      this.errors.emit(key, reason)
+      throw reason
     })
   }
 
@@ -90,9 +90,11 @@ export class SWR {
   /**
    * Revalidates the key and mutates the cache if needed.
    */
-  public async revalidate<D = any>(key?: SWRKey, options?: Partial<SWRRevalidateOptions<D>>): Promise<D | undefined> {
+  public async revalidate<D = any>(key: SWRKey | undefined, options?: Partial<SWRRevalidateOptions<D>>): Promise<D> {
     // Avoid doing anything if the key resolved to undefined.
-    if (!key) return undefined
+    if (!key) {
+      throw new Error('[Revalidate] Key issue: ${key}')
+    }
 
     // Resolves the options given the defaults.
     const { fetcher: defaultFetcher, dedupingInterval: defaultDedupingInterval } = this.options
@@ -102,24 +104,17 @@ export class SWR {
       ...options,
     }
 
-    // Stores the data to mutate (if any).
-    let data: undefined | Promise<D | undefined> = undefined
-
     // Check the cache for the expiration.
     if (force || !this.cache.has(key) || (this.cache.has(key) && this.cache.get(key).hasExpired())) {
       // We have a forced fetch or there's an item in the
       // cache and it has expired, thus we need to refetch the data.
-      data = this.requestData(key, fetcher)
+      const data = this.requestData(key, fetcher)
+      const safeData = data.catch(() => undefined)
+      this.cache.set(key, new CacheItem({ data: safeData }).expiresIn(dedupingInterval))
+      return await data
     }
 
-    // Don't mutate if the data is undefined. Keep in mind
-    // this would still mutate values when Promise<undefined>
-    // meaning the request has failed and the cache takes care of it.
-    if (data !== undefined) {
-      this.cache.set(key, new CacheItem({ data }).expiresIn(dedupingInterval))
-    }
-
-    return await data
+    return this.getWait<D>(key)
   }
 
   /**
@@ -128,28 +123,30 @@ export class SWR {
    * given key manually.
    */
   public async mutate<D = any>(
-    key?: SWRKey,
-    value?: SWRMutateValue<D>,
-    options?: Partial<SWRMutateOptions>
-  ): Promise<D | undefined> {
+    key: SWRKey | undefined,
+    value: SWRMutateValue<D>,
+    options?: Partial<SWRMutateOptions<D>>
+  ): Promise<D> {
     // Avoid doing anything if the key resolved to undefined.
-    if (!key) return undefined
+    if (!key) {
+      throw new Error('[Mutate] Key issue: ${key}')
+    }
 
     // Get the configuration option of the mutate.
     const {
       revalidate: revalidateAfterMutation,
       revalidateOptions,
       revalidateFunction,
-    }: SWRMutateOptions = {
+    }: SWRMutateOptions<D> = {
       ...defaultMutateOptions,
       ...options,
     }
 
     // Define the mutation data, this also resolves the previous
     // state if needed by the value (in case it's a function).
-    let data: D | null | undefined
+    let data: D
     if (typeof value === 'function') {
-      let state: D | null = null
+      let state: D | undefined = undefined
       if (this.cache.has(key)) {
         const item = this.cache.get<D>(key)
         if (!item.isResolving()) state = item.data as D
@@ -207,7 +204,7 @@ export class SWR {
    * - If the item is pending to resolve (there is a request
    * pending to resolve) it will return undefined.
    */
-  public get<D = any>(key?: SWRKey): D | undefined {
+  public get<D = any>(key: SWRKey | undefined): D | undefined {
     if (key && this.cache.has(key)) {
       const item = this.cache.get<D>(key)
       if (!item.isResolving()) return item.data as D
@@ -221,21 +218,21 @@ export class SWR {
    * that will resolve the the value. If there's no item
    * in the cache, it will wait for it before resolving.
    */
-  public getWait<D = any>(key: SWRKey): Promise<D> {
+  public getWait<D = any, E = Error>(key: SWRKey | undefined): Promise<D> {
     return new Promise((resolve, reject) => {
       // Subscribe to the cache and wait.
       const unsubscribe = this.subscribeData(key, (data: D) => {
         unsubscribe()
-        return resolve(data)
+        if (data !== undefined) return resolve(data)
       })
       // Subscribe to errors.
-      const unsubscribeErrors = this.subscribeErrors(key, (error: any) => {
+      const unsubscribeErrors = this.subscribeErrors(key, (error: E) => {
         unsubscribeErrors()
-        return reject(error)
+        if (error !== undefined) return reject(error)
       })
       // Resolve if we already got the data.
-      const current = this.get(key)
-      if (current) return resolve(current)
+      const current = this.get<D>(key)
+      if (current !== undefined) return resolve(current)
     })
   }
 
