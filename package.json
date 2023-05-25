@@ -10,11 +10,11 @@
   },
   "types": "./dist/swrev.d.ts",
   "main": "./dist/swrev.umd.js",
-  "module": "./dist/swrev.es.js",
+  "module": "./dist/swrev.mjs",
   "exports": {
     "./package.json": "./package.json",
     ".": {
-      "import": "./dist/swrev.es.js",
+      "import": "./dist/swrev.mjs",
       "require": "./dist/swrev.umd.js"
     }
   },
@@ -28,7 +28,7 @@
     "prepack": "npm run build"
   },
   "devDependencies": {
-    "typescript": "^4.6.2",
-    "vite": "^2.8.6"
+    "typescript": "^4.9.5",
+    "vite": "^4.3.8"
   }
 }
