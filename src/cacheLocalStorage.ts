@@ -2,10 +2,15 @@ import { type CacheClearOptions, CacheItem, type CacheRemoveOptions, type SWRCac
 import { type SWREventManager, DefaultSWREventManager, type SWRListener } from './events'
 import type { SWRKey } from './key'
 
-export const localStorageKeyPrefix = "sswr__"
+/**
+ * Prefix of keys of cached items in localStorage.
+ */
+export const localStorageKeyPrefix = "swrev__"
 
 /**
- * Default cache implementation for vue-cache.
+ * LocalStorage implementation of cache.
+ * 
+ * It persists items in memory and localStorage.
  */
 export class LocalStorageCache implements SWRCache {
     /**
@@ -45,12 +50,11 @@ export class LocalStorageCache implements SWRCache {
      * for the existence of it.
      */
     get<D>(key: string): CacheItem<D> {
-        const valueFromElements = this.elements.get(key)
-        if (valueFromElements) {
-            return valueFromElements as CacheItem<D>
-        } else {
+        const valueFromElements = this.elements.get(key) as CacheItem<D>
+        if (valueFromElements) return valueFromElements
+        else {
             const value = localStorage.getItem(localStorageKeyPrefix + key)
-            return value ? new CacheItem(JSON.parse(value)) : this.elements.get(key) as CacheItem<D>
+            return value ? new CacheItem(JSON.parse(value)) : valueFromElements
         }
     }
 
