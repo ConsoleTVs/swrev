@@ -64,7 +64,7 @@ export class CacheItem<D = unknown> {
    * Determines if the given cache item has expired.
    */
   hasExpired(): boolean {
-    return this.expiresAt === null || this.expiresAt < new Date()
+    return this.expiresAt === null || new Date(this.expiresAt) < new Date()
   }
 
   /**
@@ -92,7 +92,7 @@ export interface CacheRemoveOptions {
 /**
  * Determines the cache clear options.
  */
-export interface CacheClearOptions extends CacheRemoveOptions {}
+export interface CacheClearOptions extends CacheRemoveOptions { }
 
 /**
  * Represents the methods a cache should implement
