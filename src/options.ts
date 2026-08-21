@@ -126,6 +126,9 @@ export const defaultOptions: SWROptions = {
   cache: new DefaultCache(),
   errors: new DefaultSWREventManager(),
   fetcher: async <D>(url: SWRKey): Promise<D> => {
+    if (typeof fetch === 'undefined') {
+      throw new Error('[SWR] The default fetcher requires the global `fetch` API. Provide a custom fetcher (e.g. node-fetch) in non-browser environments such as Node.')
+    }
     const response = await fetch(url)
     if (!response.ok) throw Error('Not a 2XX response.')
     return response.json()
